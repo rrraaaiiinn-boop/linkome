@@ -95,6 +95,18 @@
   .rc .url{color:var(--lime);font-size:13px;word-break:break-all}
   .rc .row{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
   .rc .type{font-size:12px;color:var(--muted)}
+  .mycard{background:var(--surface);border-radius:16px;padding:18px;margin-top:8px}
+  .myprof{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .myprof .mi{display:flex;flex-direction:column;min-width:0;flex:1}
+  .myprof .mi b{font-size:16px}
+  .myprof .mi span{color:var(--lime);font-size:13px;word-break:break-all}
+  .mystats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+  .mystats div{background:var(--surface2);border-radius:12px;padding:12px 10px;text-align:center}
+  .mystats small{display:block;color:var(--muted);font-size:12px}
+  .mystats strong{display:block;font-size:22px;font-weight:800;color:var(--lime);margin-top:4px}
+  .myquick{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .qbtn{flex:1;min-width:120px;text-align:center;background:var(--surface2);border-radius:10px;padding:11px;font-weight:700;font-size:14px;color:var(--text)}
+  .qbtn:hover{background:#2E2E2E}
   .today{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   .tt{background:var(--surface);border-radius:14px;padding:16px}
   .tt small{display:block;color:var(--muted);font-size:12.5px}
@@ -399,11 +411,9 @@ function thumb(b,l){return b&&b.image?`<img src="${b.image}" alt="">`:esc(typeLa
 /* ================= pages ================= */
 function pageLanding(){
   const authed=USE_DB&&CURRENT_UID;
-  const topbar=`<div class="landtop">${authed
-    ? `<a class="btn y sm" href="#/home">내 링크 관리하기</a>`
-    : (USE_DB
-        ? `<a class="btn g sm" id="landLogin" href="#/login">로그인</a><a class="btn y sm" id="landSignup" href="#/login">회원가입</a>`
-        : `<a class="btn g sm" href="#/login">로그인</a><a class="btn y sm" href="#/login">회원가입</a>`)}</div>`;
+  const topbar=authed ? '' : `<div class="landtop">${USE_DB
+      ? `<a class="btn g sm" id="landLogin" href="#/login">로그인</a><a class="btn y sm" id="landSignup" href="#/login">회원가입</a>`
+      : `<a class="btn g sm" href="#/login">로그인</a><a class="btn y sm" href="#/login">회원가입</a>`}</div>`;
   return `<div class="center">
     ${topbar}
     ${LOGO_MOTION()}
@@ -448,17 +458,36 @@ function todayCounts(){
   return {view:ev.filter(e=>e.type==='view').length, visit:ev.filter(e=>e.type==='visit').length};
 }
 function pageHome(){
+  const totalViews=S.events.filter(e=>e.type==='view').length;
   const recent=S.links.slice(0,3).map(l=>`<div class="rc"><b>${esc(l.title)}</b><div class="url">${shortUrl(l)}</div><div class="row"><span class="type">${esc(l.type)}</span><button class="btn g sm" data-copy="${l.slug}">복사</button></div></div>`).join('');
+  const t=todayCounts();
   return shell('home',`
     <div class="hero"><div class="lockup">${ICON_NEON}${WM()}</div><div class="sub"><span class="l">수익달성 조건 없이</span><span class="l">단 1초만에 내 링크에 수익을 만들어보세요</span></div>${INPUTBAR('mk2','url2')}</div>
+
+    <div class="mycard">
+      <div class="myprof">
+        <div class="avatar" style="width:56px;height:56px">${S.profile.avatar?`<img src="${S.profile.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:''}</div>
+        <div class="mi"><b>${esc(S.profile.name)}</b><span>linkome.me/@${esc(S.profile.handle)}</span></div>
+        <button class="btn g sm" id="myCopy">프로필 링크 복사</button>
+        <a class="btn y sm" href="#/@${esc(S.profile.handle)}" target="_blank">공개 프로필 보기</a>
+      </div>
+      <div class="mystats">
+        <div><small>내 링크</small><strong>${num(S.links.length)}</strong></div>
+        <div><small>총 조회수</small><strong>${num(totalViews)}</strong></div>
+        <div><small>오늘 방문자</small><strong>${num(t.visit)}</strong></div>
+        <div><small>광고 수익</small><strong style="color:var(--muted2);font-size:16px">연동 예정</strong></div>
+      </div>
+      <div class="myquick">
+        <a class="qbtn" href="#/profile">프로필 편집</a>
+        <a class="qbtn" href="#/links">링크 관리</a>
+        <a class="qbtn" href="#/report">통계 보기</a>
+      </div>
+    </div>
+
     <h2 class="sec">최근 만든 링크</h2>
-    <div class="recent">${recent||'<div class="empty">아직 없어요</div>'}</div>
-    <h2 class="sec">오늘 요약</h2>
-    <div class="today">${(function(){const t=todayCounts();return `<div class="tt"><small>오늘 조회수</small><strong>${num(t.view)}</strong></div><div class="tt"><small>오늘 방문자수</small><strong>${num(t.visit)}</strong></div><div class="tt"><small>오늘 광고 수익</small><strong style="color:var(--muted2);font-size:16px">— 연동 예정</strong></div>`})()}</div>
+    <div class="recent">${recent||'<div class="empty">아직 없어요 · 위에서 첫 링크를 만들어보세요</div>'}</div>
   `);
 }
-
-/* --- Link: archive with create bar + paginated table --- */
 const PAGE=8;
 function pageLinks(page,newSlug){
   const total=S.links.length, pages=Math.max(1,Math.ceil(total/PAGE));
@@ -641,6 +670,7 @@ function bind(path){
   if(lmv){const fb=()=>{const w=document.getElementById('lm');if(w)w.innerHTML=WM()};lmv.onerror=fb;const pr=lmv.play();if(pr&&pr.catch)pr.catch(fb)}
   if(USE_DB&&!CURRENT_UID){const f=document.getElementById('mk');if(f)f.addEventListener('submit',e=>{e.preventDefault();location.hash='#/login'})}else bindCreate('mk','url',l=>location.hash='#/created?new='+l.slug);
   bindCreate('mk2','url2',l=>location.hash='#/links?new='+l.slug);
+  const myc=document.getElementById('myCopy');if(myc)myc.onclick=()=>copyText(brandProfileUrl());
   bindCreate('mk3','url3',l=>{if(location.hash==='#/links?new='+l.slug)rerender();else location.hash='#/links?new='+l.slug});
   const ls=document.getElementById('landSignup');if(ls)ls.onclick=e=>{e.preventDefault();authMode='signup';location.hash='#/login'};
   const li=document.getElementById('landLogin');if(li)li.onclick=e=>{e.preventDefault();authMode='signin';location.hash='#/login'};
